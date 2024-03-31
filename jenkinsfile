@@ -10,9 +10,8 @@ pipeline {
         RELEASE = "1.0.0"
         DOCKER_USER = "osanyap"
         DOCKER_PASS = 'dockerhub'
-        IMAGE_NAME = "${DOCKER_USER}" + "/" + "${APP_NAME}"
+        IMAGE_NAME = "${DOCKER_USER}/${APP_NAME}"
         IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
-	
     }
     stages {
         stage('clean workspace') {
@@ -26,16 +25,15 @@ pipeline {
             }
         }
         
-       stage("Sonarqube Analysis") {
+        stage("Sonarqube Analysis") {
             steps {
-                withSonarQubeEnv('sonar') {
-                    sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Reddit-Clone-CI -Dsonar.projectkey=Reddit-Clone-CI \
+                withSonarQubeEnv('SonarQube-Server') {
+                    sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Reddit-Clone-CI \
                            -Dsonar.projectKey=Reddit-Clone-CI'''
                 }
             }
         }
-
-
+        
         stage("Quality Gate") {
             steps {
                 script {
@@ -100,5 +98,4 @@ pipeline {
                attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
         }
      }
-    
 }
