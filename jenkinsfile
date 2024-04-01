@@ -24,7 +24,16 @@ pipeline {
                 git branch: 'main', url: 'https://github.com/osanyap/a-reddit-clone.git'
             }
         }
-        
+        stage("Sonarqube Analysis") {
+    steps {
+        sh """$SCANNER_HOME/bin/sonar-scanner \
+            -Dsonar.projectKey=Reddit-Clone-CI \
+            -Dsonar.projectName=Reddit-Clone-CI \
+            -Dsonar.url=http://34.229.71.46:9000 \
+            -Dsonar.login=squ_58c7a47067b33bd5cda924a3f8baccccc1c976b2 \
+            -Dsonar.java.binaries"""
+    }
+}
         stage("Sonarqube Analysis") {
             steps {
                       sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.url=http://34.229.71.46:9000 \
