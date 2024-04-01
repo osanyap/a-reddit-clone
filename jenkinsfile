@@ -27,12 +27,11 @@ pipeline {
         
         stage("Sonarqube Analysis") {
             steps {
-                withSonarQubeEnv('SonarQube-Server') {
-                    sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Reddit-Clone-CI \
-                           -Dsonar.projectKey=Reddit-Clone-CI'''
+                      sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.url=http://34.229.71.46:9000 \
+                           -Dsonar.login=squ_58c7a47067b33bd5cda924a3f8baccccc1c976b2 -Dsonar.java.binaries'''
                 }
             }
-        }
+        
         
         stage("Quality Gate") {
             steps {
