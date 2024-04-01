@@ -13,9 +13,8 @@ pipeline {
         DOCKER_USER = 'osanyap'
         APP_NAME = "reddit-clone-pipeline"
         RELEASE = "1.0.0"
-        BUILD_NUMBER = "${BUILD_NUMBER}"
-        DOCKER_APP_NAME = "${DOCKER_USER}/${APP_NAME}"
         DOCKER_IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
+        DOCKER_APP_NAME = "${DOCKER_USER}/${APP_NAME}"
     }
     stages {
         stage('SonarQube Analysis') {
@@ -30,14 +29,13 @@ pipeline {
                 }
             }
         }
-       /* stage('Quality Gate') {
+        stage('Quality Gate') {
             steps {
                 script {
                     waitForQualityGate abortPipeline: false, credentialsId: 'SonarQube-Token'
                 }
             }
         }
-          */
         stage('Install Dependencies') {
             steps {
                 sh "npm install"
@@ -50,7 +48,6 @@ pipeline {
         }
         stage('Build & Push Docker Image') {
             steps {
-                // Docker build and push steps
                 sh "docker build -t ${DOCKER_APP_NAME}:${DOCKER_IMAGE_TAG} ."
                 sh "docker push ${DOCKER_APP_NAME}:${DOCKER_IMAGE_TAG}"
                 sh "docker tag ${DOCKER_APP_NAME}:${DOCKER_IMAGE_TAG} ${DOCKER_APP_NAME}:latest"
@@ -73,7 +70,7 @@ pipeline {
         stage("Trigger CD Pipeline") {
             steps {
                 script {
-                    sh "curl -v -k --user clouduser:${JENKINS_API_TOKEN} -X POST -H 'cache-control: no-cache' -H 'content-type: application/x-www-form-urlencoded' --data 'IMAGE_TAG=${IMAGE_TAG}' 'ec2-65-2-187-142.ap-south-1.compute.amazonaws.com:8080/job/Reddit-Clone-CD/buildWithParameters?token=gitops-token'"
+                    sh "curl -v -k --user clouduser:${JENKINS_API_TOKEN} -X POST -H 'cache-control: no-cache' -H 'content-type: application/x-www-form-urlencoded' --data 'IMAGE_TAG=${DOCKER_IMAGE_TAG}' 'ec2-65-2-187-142.ap-south-1.compute.amazonaws.com:8080/job/Reddit-Clone-CD/buildWithParameters?token=gitops-token'"
                 }
             }
          }
@@ -89,5 +86,4 @@ pipeline {
                attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
         }
      }
-    
 }
