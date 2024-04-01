@@ -20,28 +20,62 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    // Wrap SonarQube analysis with withSonarQubeEnv
-                    withSonarQubeEnv('SonarQube-Server') {
-                        sh """$SCANNER_HOME/bin/sonar-scanner \
-                            -Dsonar.projectKey=${SONARQUBE_PROJECT_KEY} \
-                            -Dsonar.projectName=${SONARQUBE_PROJECT_NAME} \
-                            -Dsonar.host.url=${SONARQUBE_URL} \
-                            -Dsonar.login=${SONARQUBE_LOGIN} \
-                            -Dsonar.java.binaries"""
-                    }
+                    sh """$SCANNER_HOME/bin/sonar-scanner \
+                        -Dsonar.projectKey=${SONARQUBE_PROJECT_KEY} \
+                        -Dsonar.projectName=${SONARQUBE_PROJECT_NAME} \
+                        -Dsonar.host.url=${SONARQUBE_URL} \
+                        -Dsonar.login=${SONARQUBE_LOGIN} \
+                        -Dsonar.java.binaries"""
                 }
             }
         }
         stage('Quality Gate') {
             steps {
                 script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'SonarQube-Token'
+                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
                 }
             }
         }
-        // Add other stages here
-    }
-    post {
+        stage('Install Dependencies') {
+            steps {
+                sh "npm install"
+            }
+        }
+        stage('TRIVY FS SCAN') {
+            steps {
+                sh "trivy fs . > trivyfs.txt"
+            }
+        }
+        stage('Build & Push Docker Image') {
+            steps {
+                sh "docker build -t ${DOCKER_APP_NAME}:${DOCKER_IMAGE_TAG} ."
+                sh "docker push ${DOCKER_APP_NAME}:${DOCKER_IMAGE_TAG}"
+                sh "docker tag ${DOCKER_APP_NAME}:${DOCKER_IMAGE_TAG} ${DOCKER_APP_NAME}:latest"
+                sh "docker push ${DOCKER_APP_NAME}:latest"
+            }
+        }
+        stage('Trivy Image Scan') {
+            steps {
+                sh 'docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image ${DOCKER_APP_NAME}:${DOCKER_IMAGE_TAG} --no-progress --scanners vuln --exit-code 0 --severity HIGH,CRITICAL --format table > trivyimage.txt'
+            }
+        }
+        stage('Cleanup Artifacts') {
+            steps {
+                script {
+                    sh "docker rmi ${DOCKER_APP_NAME}:${DOCKER_IMAGE_TAG}"
+                    sh "docker rmi ${DOCKER_APP_NAME}:latest"
+                }
+            }
+        }
+        stage("Trigger CD Pipeline") {
+            steps {
+                script {
+                    sh "curl -v -k --user clouduser:${JENKINS_API_TOKEN} -X POST -H 'cache-control: no-cache' -H 'content-type: application/x-www-form-urlencoded' --data 'IMAGE_TAG=${DOCKER_IMAGE_TAG}' 'ec2-65-2-187-142.ap-south-1.compute.amazonaws.com:8080/job/Reddit-Clone-CD/buildWithParameters?token=gitops-token'"
+                }
+            }
+         }
+     }
+     post {
         always {
            emailext attachLog: true,
                subject: "'${currentBuild.result}'",
@@ -51,5 +85,5 @@ pipeline {
                to: 'ashfaque.s510@gmail.com',                              
                attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
         }
-    }
+     }
 }
